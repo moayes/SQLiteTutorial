@@ -20,8 +20,8 @@ enum SQLiteError: ErrorType {
     case OpenDatabase(message: String)
     case Prepare(message: String)
     case Step(message: String)
+    case Bind(message: String)
 }
-
 
 class SQLiteDatabase {
     private let dbPointer: COpaquePointer
@@ -63,22 +63,28 @@ class SQLiteDatabase {
 }
 
 extension SQLiteDatabase {
+    func prepareStatement(sql: String) throws -> COpaquePointer {
+        var statement: COpaquePointer = nil
+        guard sqlite3_prepare_v2(dbPointer, sql, -1, &statement, nil) == SQLITE_OK else {
+            throw SQLiteError.Prepare(message: errorMessage)
+        }
+        
+        return statement
+    }
+}
+
+extension SQLiteDatabase {
     func createTable(schema: String) throws {
-        var createTableStatement: COpaquePointer = nil
+        let createTableStatement = try prepareStatement(schema)
         defer {
             sqlite3_finalize(createTableStatement)
         }
         
-        if sqlite3_prepare_v2(dbPointer, schema, -1, &createTableStatement, nil) == SQLITE_OK {
-            if sqlite3_step(createTableStatement) == SQLITE_DONE {
-                print("Table created.")
-            } else {
-                throw SQLiteError.Step(message: errorMessage)
-            }
-        } else {
-            throw SQLiteError.Prepare(message: errorMessage)
+        guard sqlite3_step(createTableStatement) == SQLITE_DONE else {
+            throw SQLiteError.Step(message: errorMessage)
         }
         
+        print("Table created.")
     }
 }
 
@@ -93,103 +99,92 @@ struct Contact: CustomDebugStringConvertible {
 
 extension SQLiteDatabase {
     func insertContact(contact: Contact) throws {
-        let insertStatementString = "INSERT INTO Contact (Id, Name) VALUES (?, ?);"
-        var insertStatement: COpaquePointer = nil
+        let insertSql = "INSERT INTO Contact (Id, Name) VALUES (?, ?);"
+        let insertStatement = try prepareStatement(insertSql)
         defer {
             sqlite3_finalize(insertStatement)
         }
         
-        if sqlite3_prepare_v2(dbPointer, insertStatementString, -1, &insertStatement, nil) == SQLITE_OK {
-            let name: NSString = contact.name
-            
-            sqlite3_bind_int(insertStatement, 1, contact.id)
-            sqlite3_bind_text(insertStatement, 2, name.UTF8String, -1, nil)
-            
-            if sqlite3_step(insertStatement) == SQLITE_DONE {
-                print("Successfully inserted row.")
-            } else {
-                throw SQLiteError.Step(message: errorMessage)
-            }
-        } else {
-            throw SQLiteError.Prepare(message: errorMessage)
+        let name: NSString = contact.name
+        guard sqlite3_bind_int(insertStatement, 1, contact.id) == SQLITE_OK  &&
+              sqlite3_bind_text(insertStatement, 2, name.UTF8String, -1, nil) == SQLITE_OK else {
+            throw SQLiteError.Bind(message: errorMessage)
         }
+        
+        guard sqlite3_step(insertStatement) == SQLITE_DONE else {
+            throw SQLiteError.Step(message: errorMessage)
+        }
+        
+        print("Successfully inserted row.")
     }
 }
 
 extension SQLiteDatabase {
     func contact(id: Int32) -> Contact? {
-        let queryStatementString = "SELECT * FROM Contact WHERE Id = ?;"
-        var queryStatement: COpaquePointer = nil
+        let querySql = "SELECT * FROM Contact WHERE Id = ?;"
+        guard let queryStatement = try? prepareStatement(querySql) else {
+            return nil
+        }
+        
         defer {
             sqlite3_finalize(queryStatement)
         }
         
-        if sqlite3_prepare_v2(dbPointer, queryStatementString, -1, &queryStatement, nil) == SQLITE_OK {
-            sqlite3_bind_int(queryStatement, 1, id)
-            
-            if sqlite3_step(queryStatement) == SQLITE_ROW {
-                let id = sqlite3_column_int(queryStatement, 0)
-                
-                let queryResultCol1 = sqlite3_column_text(queryStatement, 1)
-                let name = String.fromCString(UnsafePointer<CChar>(queryResultCol1))!
-                
-                return Contact(id: id, name: name)
-                
-            } else {
-                return nil
-            }
-        } else {
-            print("SELECT statement could not be prepared")
+        guard sqlite3_bind_int(queryStatement, 1, id) == SQLITE_OK else {
             return nil
         }
+        
+        guard sqlite3_step(queryStatement) == SQLITE_ROW else {
+            return nil
+        }
+        
+        let id = sqlite3_column_int(queryStatement, 0)
+        
+        let queryResultCol1 = sqlite3_column_text(queryStatement, 1)
+        let name = String.fromCString(UnsafePointer<CChar>(queryResultCol1))!
+        
+        return Contact(id: id, name: name)
     }
 }
 
 extension SQLiteDatabase {
     func updateContact(contact: Contact) throws {
-        let updateStatementString = "UPDATE Contact SET Name = ? WHERE Id = ?"
-        var updateStatement: COpaquePointer = nil
+        let updateSql = "UPDATE Contact SET Name = ? WHERE Id = ?"
+        let updateStatement = try prepareStatement(updateSql)
         defer {
             sqlite3_finalize(updateStatement)
         }
         
-        if sqlite3_prepare_v2(dbPointer, updateStatementString, -1, &updateStatement, nil) == SQLITE_OK {
-            let name: NSString = contact.name
-            
-            sqlite3_bind_text(updateStatement, 1, name.UTF8String, -1, nil)
-            sqlite3_bind_int(updateStatement, 2, contact.id)
-            
-            if sqlite3_step(updateStatement) == SQLITE_DONE {
-                print("Successfully updated row.")
-            } else {
-                throw SQLiteError.Step(message: errorMessage)
-            }
-        } else {
-            throw SQLiteError.Prepare(message: errorMessage)
+        let name: NSString = contact.name
+        guard sqlite3_bind_text(updateStatement, 1, name.UTF8String, -1, nil) == SQLITE_OK && sqlite3_bind_int(updateStatement, 2, contact.id) == SQLITE_OK else {
+            throw SQLiteError.Bind(message: errorMessage)
         }
+        
+        guard sqlite3_step(updateStatement) == SQLITE_DONE else {
+            throw SQLiteError.Step(message: errorMessage)
+        }
+        
+        print("Successfully updated row.")
     }
 }
 
 extension SQLiteDatabase {
     func deleteContact(id id: Int32) throws {
-        let deleteStatementStirng = "DELETE FROM Contact WHERE Id = ?"
-        var deleteStatement: COpaquePointer = nil
+        let deleteSql = "DELETE FROM Contact WHERE Id = ?"
+        let deleteStatement = try prepareStatement(deleteSql)
         defer {
             sqlite3_finalize(deleteStatement)
         }
         
-        if sqlite3_prepare_v2(dbPointer, deleteStatementStirng, -1, &deleteStatement, nil) == SQLITE_OK {
-            
-            sqlite3_bind_int(deleteStatement, 1, id)
-            
-            if sqlite3_step(deleteStatement) == SQLITE_DONE {
-                print("Successfully deleted row.")
-            } else {
-                throw SQLiteError.Step(message: errorMessage)
-            }
-        } else {
-            throw SQLiteError.Prepare(message: errorMessage)
+        guard sqlite3_bind_int(deleteStatement, 1, id) == SQLITE_OK else {
+            throw SQLiteError.Bind(message: errorMessage)
         }
+        
+        guard sqlite3_step(deleteStatement) == SQLITE_DONE else {
+            throw SQLiteError.Step(message: errorMessage)
+        }
+        
+        print("Successfully deleted row.")
     }
 }
 
