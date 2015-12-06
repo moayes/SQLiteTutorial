@@ -2,6 +2,7 @@
 
 import Foundation
 import SQLite
+import XCPlayground
 
 destroyPart2Database()
 
@@ -14,7 +15,15 @@ As a Swift developer you're probably feeling a little uneasy about what happened
 */
 
 
-//: ## Errors
+/*: 
+
+## Errors
+
+Getting at errors from the C API is a bit awkard as a Swift developer. Checking a result code and then calling another function just doesn't make sense in this brave new world. 
+
+It would make more sense if methods who can fail throw an error. Below is a custom `ErrorType` that covers 4 of the main operations that are used that can fail.
+
+*/
 
 enum SQLiteError: ErrorType {
     case OpenDatabase(message: String)
@@ -22,6 +31,12 @@ enum SQLiteError: ErrorType {
     case Step(message: String)
     case Bind(message: String)
 }
+
+/*:
+
+## The Database Connection
+
+*/
 
 class SQLiteDatabase {
     private let dbPointer: COpaquePointer
@@ -62,6 +77,22 @@ class SQLiteDatabase {
     }
 }
 
+let db: SQLiteDatabase
+do {
+    db = try SQLiteDatabase.open(part2DbPath)
+} catch SQLiteError.OpenDatabase(let message) {
+    print("Unable to open database. Verify that you created the directory described in the Getting Started section.")
+    XCPlaygroundPage.currentPage.finishExecution()
+}
+
+/*:
+
+### Preparing Statements
+
+This is done so often and in the same way that it makes sense to wrap it to be used in the other wrapped methods.
+
+*/
+
 extension SQLiteDatabase {
     func prepareStatement(sql: String) throws -> COpaquePointer {
         var statement: COpaquePointer = nil
@@ -72,6 +103,12 @@ extension SQLiteDatabase {
         return statement
     }
 }
+
+/*:
+
+### Create Table
+
+*/
 
 extension SQLiteDatabase {
     func createTable(schema: String) throws {
@@ -88,6 +125,26 @@ extension SQLiteDatabase {
     }
 }
 
+
+do {
+    let contactTableSchema = "CREATE TABLE Contact(" +
+        "Id INT PRIMARY KEY NOT NULL," +
+        "Name CHAR(255)" +
+    ");"
+
+    try db.createTable(contactTableSchema)
+} catch {
+    print(db.errorMessage)
+}
+
+/*:
+
+### The Contact
+
+Time to define a proper first-class type for the contact record that is being used in the database.
+
+*/
+
 struct Contact: CustomDebugStringConvertible {
     let id: Int32
     let name: String
@@ -96,6 +153,12 @@ struct Contact: CustomDebugStringConvertible {
         return "\(id) | \(name)"
     }
 }
+
+/*:
+
+### Create
+
+*/
 
 extension SQLiteDatabase {
     func insertContact(contact: Contact) throws {
@@ -118,6 +181,18 @@ extension SQLiteDatabase {
         print("Successfully inserted row.")
     }
 }
+
+do {
+    try db.insertContact(Contact(id: 1, name: "Ray"))
+} catch {
+    print(db.errorMessage)
+}
+
+/*:
+
+### Read
+
+*/
 
 extension SQLiteDatabase {
     func contact(id: Int32) -> Contact? {
@@ -147,6 +222,13 @@ extension SQLiteDatabase {
     }
 }
 
+db.contact(1)
+
+/*:
+
+### Update
+
+*/
 extension SQLiteDatabase {
     func updateContact(contact: Contact) throws {
         let updateSql = "UPDATE Contact SET Name = ? WHERE Id = ?;"
@@ -168,6 +250,17 @@ extension SQLiteDatabase {
     }
 }
 
+do {
+    try db.updateContact(Contact(id: 1, name: "Ray Wenderlich"))
+    db.contact(1)
+} catch {
+    print(db.errorMessage)
+}
+/*:
+
+### Delete
+
+*/
 extension SQLiteDatabase {
     func deleteContact(id id: Int32) throws {
         let deleteSql = "DELETE FROM Contact WHERE Id = ?;"
@@ -189,31 +282,10 @@ extension SQLiteDatabase {
 }
 
 do {
-    let db = try SQLiteDatabase.open(part2DbPath)
-    
-    let contactTableSchema = "CREATE TABLE Contact(" +
-        "Id INT PRIMARY KEY NOT NULL," +
-        "Name CHAR(255)" +
-    ");"
-
-    try db.createTable(contactTableSchema)
-    
-    try db.insertContact(Contact(id: 1, name: "Ray"))
-    db.contact(1)
-    
     try db.insertContact(Contact(id: 2, name: "Chris"))
     db.contact(2)
     
-    try db.updateContact(Contact(id: 2, name: "Joe"))
-    db.contact(2)
-    
     try db.deleteContact(id: 2)
-    db.contact(2)
     
-} catch SQLiteError.OpenDatabase(let message) {
-    print(message)
-} catch SQLiteError.Prepare(let message) {
-    print(message)
-} catch SQLiteError.Step(let message) {
-    print(message)
+    db.contact(2)
 }
