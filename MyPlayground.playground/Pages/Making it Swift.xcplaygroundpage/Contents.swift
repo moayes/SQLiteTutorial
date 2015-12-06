@@ -285,7 +285,60 @@ do {
     try db.insertContact(Contact(id: 2, name: "Chris"))
     db.contact(2)
     
+    try db.deleteContact(id: 1)
     try db.deleteContact(id: 2)
     
+    db.contact(1)
     db.contact(2)
 }
+
+/*:
+
+### Read Multiple Rows
+
+*/
+
+extension SQLiteDatabase {
+    func contacts() -> [Contact] {
+        let querySql = "SELECT * FROM Contact ORDER BY Id ASC;"
+        guard let queryStatement = try? prepareStatement(querySql) else {
+            return []
+        }
+        
+        defer {
+            sqlite3_finalize(queryStatement)
+        }
+        
+        guard sqlite3_step(queryStatement) == SQLITE_ROW else {
+            return []
+        }
+        
+        var contacts = [Contact]()
+        repeat {
+            let id = sqlite3_column_int(queryStatement, 0)
+            
+            let queryResultCol1 = sqlite3_column_text(queryStatement, 1)
+            let name = String.fromCString(UnsafePointer<CChar>(queryResultCol1))!
+            
+            contacts.append(Contact(id: id, name: name))
+        } while (sqlite3_step(queryStatement) != SQLITE_DONE)
+        
+        return contacts
+    }
+}
+
+do {
+    
+    try db.insertContact(Contact(id: 1, name: "Sam"))
+    try db.insertContact(Contact(id: 2, name: "Mic"))
+    try db.insertContact(Contact(id: 3, name: "Brian"))
+    
+    db.contacts()
+    
+} catch {
+    print(db.errorMessage)
+}
+
+
+
+
