@@ -148,7 +148,7 @@ query()
 */
 
 func update() {
-    let updateStatementString = "UPDATE Contact SET Name = 'Chris' WHERE Id = 1"
+    let updateStatementString = "UPDATE Contact SET Name = 'Chris' WHERE Id = 1;"
     var updateStatement: COpaquePointer = nil
     if sqlite3_prepare_v2(db, updateStatementString, -1, &updateStatement, nil) == SQLITE_OK {
         if sqlite3_step(updateStatement) == SQLITE_DONE {
@@ -172,7 +172,7 @@ query()
 */
 
 func delete() {
-    let deleteStatementStirng = "DELETE FROM Contact WHERE Id = 1"
+    let deleteStatementStirng = "DELETE FROM Contact WHERE Id = 1;"
     var deleteStatement: COpaquePointer = nil
     if sqlite3_prepare_v2(db, deleteStatementStirng, -1, &deleteStatement, nil) == SQLITE_OK {
         if sqlite3_step(deleteStatement) == SQLITE_DONE {
@@ -199,7 +199,7 @@ So far, you've hopefully not run into any SQlite errors. But the time will come 
 */
 
 func prepareMalformedQuery() {
-    let malformedQueryString = "SELECT Stuff from Things WHERE Whatever"
+    let malformedQueryString = "SELECT Stuff from Things WHERE Whatever;"
     var malformedStatement: COpaquePointer = nil
     if sqlite3_prepare_v2(db, malformedQueryString, -1, &malformedStatement, nil) == SQLITE_OK {
         print("This should not have happened.")

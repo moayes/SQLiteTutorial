@@ -149,7 +149,7 @@ extension SQLiteDatabase {
 
 extension SQLiteDatabase {
     func updateContact(contact: Contact) throws {
-        let updateSql = "UPDATE Contact SET Name = ? WHERE Id = ?"
+        let updateSql = "UPDATE Contact SET Name = ? WHERE Id = ?;"
         let updateStatement = try prepareStatement(updateSql)
         defer {
             sqlite3_finalize(updateStatement)
@@ -170,7 +170,7 @@ extension SQLiteDatabase {
 
 extension SQLiteDatabase {
     func deleteContact(id id: Int32) throws {
-        let deleteSql = "DELETE FROM Contact WHERE Id = ?"
+        let deleteSql = "DELETE FROM Contact WHERE Id = ?;"
         let deleteStatement = try prepareStatement(deleteSql)
         defer {
             sqlite3_finalize(deleteStatement)
