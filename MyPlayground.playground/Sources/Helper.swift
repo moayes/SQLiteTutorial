@@ -5,6 +5,7 @@ private let tutorialDirectoryUrl = XCPlaygroundSharedDataDirectoryURL.URLByAppen
 
 private enum Database: String {
     case Part1
+    case Part2
     
     var path: String {
         return tutorialDirectoryUrl.URLByAppendingPathComponent("\(self.rawValue).sqlite").relativePath!
@@ -12,7 +13,7 @@ private enum Database: String {
 }
 
 public let part1DbPath = Database.Part1.path
-
+public let part2DbPath = Database.Part2.path
 
 private func destroyDatabase(db: Database) {
     do {
@@ -26,4 +27,8 @@ private func destroyDatabase(db: Database) {
 
 public func destroyPart1Database() {
     destroyDatabase(.Part1)
+}
+
+public func destroyPart2Database() {
+    destroyDatabase(.Part2)
 }

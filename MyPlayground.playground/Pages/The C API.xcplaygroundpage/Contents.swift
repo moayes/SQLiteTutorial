@@ -26,12 +26,18 @@ Before doing anything with the SQLite API you need to open a database connection
 
 */
 
-var db: COpaquePointer = nil
-if sqlite3_open(part1DbPath, &db) == SQLITE_OK {
-    print("Successfully opened connection to database at \(part1DbPath)")
-} else {
-    print("Unable to open database. Verify that you created the directory described in the Getting Started section.")
+func openDatabase() -> COpaquePointer {
+    var db: COpaquePointer = nil
+    if sqlite3_open(part1DbPath, &db) == SQLITE_OK {
+        print("Successfully opened connection to database at \(part1DbPath)")
+        return db
+    } else {
+        print("Unable to open database. Verify that you created the directory described in the Getting Started section.")
+        XCPlaygroundPage.currentPage.finishExecution()
+    }
 }
+
+let db = openDatabase()
 
 /*: 
 
@@ -48,22 +54,26 @@ Many of the sqlite3 functions will return an `Int32` result code. A list of the 
 Create a Contact table with a very basic schema. The table will consist of two columns. The first is `Id` as an `INT` and `PRIMARY KEY`. The second is `Name` as `CHAR(255)`.
 */
 
-let createTableString = "CREATE TABLE Contact(" +
-                        "Id INT PRIMARY KEY NOT NULL," +
-                        "Name CHAR(255)" +
-                        ");"
-
-var createTableStatement: COpaquePointer = nil
-if sqlite3_prepare_v2(db, createTableString, -1, &createTableStatement, nil) == SQLITE_OK {
-    if sqlite3_step(createTableStatement) == SQLITE_DONE {
-        print("Contact table created.")
+func createTable() {
+    let createTableString = "CREATE TABLE Contact(" +
+        "Id INT PRIMARY KEY NOT NULL," +
+        "Name CHAR(255)" +
+    ");"
+    
+    var createTableStatement: COpaquePointer = nil
+    if sqlite3_prepare_v2(db, createTableString, -1, &createTableStatement, nil) == SQLITE_OK {
+        if sqlite3_step(createTableStatement) == SQLITE_DONE {
+            print("Contact table created.")
+        } else {
+            print("Contact table could not be created.")
+        }
     } else {
-        print("Contact table could not be created.")
+        print("CREATE TABLE statement could not be prepared.")
     }
-} else {
-    print("CREATE TABLE statement could not be prepared.")
+    sqlite3_finalize(createTableStatement)
 }
-sqlite3_finalize(createTableStatement)
+
+createTable()
 
 
 /*:
@@ -74,41 +84,29 @@ Now that you have a table created, it's time to insert a row. Add a contact with
 
 */
 
-let insertStatementString = "INSERT INTO Contact (Id, Name) VALUES (?, ?);"
-var insertStatement: COpaquePointer = nil
-
-if sqlite3_prepare_v2(db, insertStatementString, -1, &insertStatement, nil) == SQLITE_OK {
-    let id: Int32 = 1
-    let name: NSString = "Ray"
+func insert() {
+    let insertStatementString = "INSERT INTO Contact (Id, Name) VALUES (?, ?);"
+    var insertStatement: COpaquePointer = nil
     
-    sqlite3_bind_int(insertStatement, 1, id)
-    sqlite3_bind_text(insertStatement, 2, name.UTF8String, -1, nil)
-    
-    if sqlite3_step(insertStatement) == SQLITE_DONE {
-        print("Successfully inserted row.")
+    if sqlite3_prepare_v2(db, insertStatementString, -1, &insertStatement, nil) == SQLITE_OK {
+        let id: Int32 = 1
+        let name: NSString = "Ray"
+        
+        sqlite3_bind_int(insertStatement, 1, id)
+        sqlite3_bind_text(insertStatement, 2, name.UTF8String, -1, nil)
+        
+        if sqlite3_step(insertStatement) == SQLITE_DONE {
+            print("Successfully inserted row.")
+        } else {
+            print("Could not insert row.")
+        }
     } else {
-        print("Could not insert row.")
+        print("INSERT statement could not be prepared.")
     }
-    
-    let id2: Int32 = 2
-    let name2: NSString = "Chris"
-    
-    sqlite3_reset(insertStatement)
-    sqlite3_clear_bindings(insertStatement)
-    
-    sqlite3_bind_int(insertStatement, 1, id2)
-    sqlite3_bind_text(insertStatement, 2, name2.UTF8String, -1, nil)
-    
-    if sqlite3_step(insertStatement) == SQLITE_DONE {
-        print("Successfully inserted row.")
-    } else {
-        print("Could not insert row.")
-    }
-    
-} else {
-    print("INSERT statement could not be prepared.")
+    sqlite3_finalize(insertStatement)
 }
-sqlite3_finalize(insertStatement)
+
+insert()
 
 
 /*: 
@@ -119,111 +117,109 @@ You now have a table and a row within that table. So, prove it!
 
 */
 
-let queryStatementString = "SELECT * FROM Contact;"
-var queryStatement: COpaquePointer = nil
-if sqlite3_prepare_v2(db, queryStatementString, -1, &queryStatement, nil) == SQLITE_OK {
-    if sqlite3_step(queryStatement) == SQLITE_ROW {
-        let queryResultCol0 = sqlite3_column_int(queryStatement, 0)
-        let queryResultCol1 = sqlite3_column_text(queryStatement, 1)
-        
-        let id = queryResultCol0
-        let name = String.fromCString(UnsafePointer<CChar>(queryResultCol1))!
-        
-        print("Query Result:")
-        print("\(id) | \(name)")
-        
+func query() {
+    let queryStatementString = "SELECT * FROM Contact;"
+    var queryStatement: COpaquePointer = nil
+    if sqlite3_prepare_v2(db, queryStatementString, -1, &queryStatement, nil) == SQLITE_OK {
+        if sqlite3_step(queryStatement) == SQLITE_ROW {
+            let id = sqlite3_column_int(queryStatement, 0)
+            
+            let queryResultCol1 = sqlite3_column_text(queryStatement, 1)
+            let name = String.fromCString(UnsafePointer<CChar>(queryResultCol1))!
+            
+            print("Query Result:")
+            print("\(id) | \(name)")
+            
+        } else {
+            print("Query returned no results")
+        }
     } else {
-        print("Query returned no results")
+        print("SELECT statement could not be prepared")
     }
-} else {
-    print("SELECT statement could not be prepared")
+    sqlite3_finalize(queryStatement)
 }
-sqlite3_finalize(queryStatement)
+
+query()
 
 /*: 
 
-### Updating
+### Update
 
 */
 
-//
-//let query1Result = sqlite3_column_text(queryStatement, 1)
-//String.fromCString(UnsafePointer<CChar>(query1Result))
-//
-//
-//let updateStatementString = "UPDATE Contact SET Name = 'Christopher' WHERE Id = 1"
-//var updateStatement: COpaquePointer = nil
-//sqlite3_prepare_v2(db, updateStatementString, -1, &updateStatement, nil)
-//sqlite3_step(updateStatement)
-//
-//sqlite3_prepare_v2(db, queryStatementString, -1, &queryStatement, nil)
-//sqlite3_step(queryStatement)
-//let query2Result = sqlite3_column_text(queryStatement, 1)
-//String.fromCString(UnsafePointer<CChar>(query2Result))
-//
+func update() {
+    let updateStatementString = "UPDATE Contact SET Name = 'Chris' WHERE Id = 1"
+    var updateStatement: COpaquePointer = nil
+    if sqlite3_prepare_v2(db, updateStatementString, -1, &updateStatement, nil) == SQLITE_OK {
+        if sqlite3_step(updateStatement) == SQLITE_DONE {
+            print("Successfully updated row.")
+        } else {
+            print("Could not update row.")
+        }
+    } else {
+        print("UPDATE statement could not be prepared")
+    }
+    sqlite3_finalize(updateStatement)
+}
 
-//sqlite3_close(db)
+update()
+query()
 
-//enum SQLiteError: ErrorType {
-//    case CannotOpenDatabase(errorMessage: String)
-//}
-//
-//class SQLiteDatabase {
-//    let dbPointer: COpaquePointer
-//    
-//    static func open(name: String) throws -> SQLiteDatabase {
-//        var db: COpaquePointer = nil
-//        if sqlite3_open(directoryUrl.URLByAppendingPathComponent(name).absoluteString, &db) == .Ok {
-//            return SQLiteDatabase(dbPointer: db)
-//        } else {
-//            if let message = String.fromCString(sqlite3_errmsg(db)) {
-//                throw SQLiteError.CannotOpenDatabase(errorMessage: message)
-//            } else {
-//                throw SQLiteError.CannotOpenDatabase(errorMessage: "No error message provided from sqlite.")
-//            }
-//            
-//        }
-//    }
-//    
-//    init(dbPointer: COpaquePointer) {
-//        self.dbPointer = dbPointer
-//    }
-//    
-//    deinit {
-//        sqlite3_close(dbPointer)
-//    }
-//}
-//
-//struct Contact {
-//    let id: Int
-//    let name: String
-//}
-//
-//extension SQLiteDatabase {
-//    func insertContact(contact: Contact) {
-//        let insertStatementString = "INSERT INTO Contact (Id, Name) VALUES (\(contact.id), '\(contact.name)');"
-//        var insertStatement: COpaquePointer = nil
-//        sqlite3_prepare_v2(dbPointer, insertStatementString, -1, &insertStatement, nil)
-//        sqlite3_step(insertStatement)
-//        String.fromCString(sqlite3_errmsg(dbPointer))
-//    }
-//}
-//
-//
-//do {
-//    let db = try SQLiteDatabase.open("database.sqlite")
-//    db.insertContact(Contact(id: 3, name: "Juan"))
-//    
-//} catch SQLiteError.CannotOpenDatabase(let message) {
-//    print(message)
-//}
+/*: 
+
+### Delete
+
+*/
+
+func delete() {
+    let deleteStatementStirng = "DELETE FROM Contact WHERE Id = 1"
+    var deleteStatement: COpaquePointer = nil
+    if sqlite3_prepare_v2(db, deleteStatementStirng, -1, &deleteStatement, nil) == SQLITE_OK {
+        if sqlite3_step(deleteStatement) == SQLITE_DONE {
+            print("Successfully deleted row.")
+        } else {
+            print("Could not delete row.")
+        }
+    } else {
+        print("DELETE statement could not be prepared")
+    }
+    
+    sqlite3_finalize(deleteStatement)
+}
+
+delete()
+query()
+
+/*: 
+
+### Errors
+
+So far, you've hopefully not run into any SQlite errors. But the time will come where you will make a call that doesn't make sense or simply write a query that cannot be compiled. Getting the error message when these things happen can save you a lot of development time. It also gives you the opportunity to present meaningful error messages to a user if appropriate.
+
+*/
+
+func prepareMalformedQuery() {
+    let malformedQueryString = "SELECT Stuff from Things WHERE Whatever"
+    var malformedStatement: COpaquePointer = nil
+    if sqlite3_prepare_v2(db, malformedQueryString, -1, &malformedStatement, nil) == SQLITE_OK {
+        print("This should not have happened.")
+    } else {
+        let errorMessage = String.fromCString(sqlite3_errmsg(db))!
+        print("Query could not be prepared! \(errorMessage)")
+    }
+    
+    sqlite3_finalize(malformedStatement)
+}
+
+prepareMalformedQuery()
+
+/*:
+
+### Close the database connection
+
+*/
+
+sqlite3_close(db)
 
 
-//enum SQLiteResultCode: Int32, Equatable {
-//    case Ok = 0
-//    case Error = 1
-//}
-//
-//func ==(lhs: Int32, rhs: SQLiteResultCode) -> Bool {
-//    return lhs == rhs.rawValue
-//}
+//: Continue to [Making It Swift](@next)
