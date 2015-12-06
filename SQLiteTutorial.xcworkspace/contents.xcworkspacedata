@@ -2,7 +2,7 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:MyPlayground.playground">
+      location = "group:Tutorial.playground">
    </FileRef>
    <FileRef
       location = "container:SQLiteTutorial.xcodeproj">
