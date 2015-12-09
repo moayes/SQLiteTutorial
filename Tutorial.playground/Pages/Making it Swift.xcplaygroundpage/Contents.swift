@@ -143,16 +143,14 @@ do {
 
 Time to define a proper first-class type for the contact record that is being used in the database.
 
+    struct Contact {
+        let id: Int32
+        let name: String
+    }
+
+
 */
 
-struct Contact: CustomDebugStringConvertible {
-    let id: Int32
-    let name: String
-    
-    var debugDescription: String {
-        return "\(id) | \(name)"
-    }
-}
 
 /*:
 
@@ -222,7 +220,7 @@ extension SQLiteDatabase {
     }
 }
 
-db.contact(1)
+db.contact(1)?.visualize()
 
 /*:
 
@@ -252,7 +250,7 @@ extension SQLiteDatabase {
 
 do {
     try db.updateContact(Contact(id: 1, name: "Ray Wenderlich"))
-    db.contact(1)
+    db.contact(1)?.visualize()
 } catch {
     print(db.errorMessage)
 }
@@ -283,7 +281,7 @@ extension SQLiteDatabase {
 
 do {
     try db.insertContact(Contact(id: 2, name: "Chris"))
-    db.contact(2)
+    db.contact(2)?.visualize()
     
     try db.deleteContact(id: 1)
     try db.deleteContact(id: 2)
@@ -297,6 +295,7 @@ do {
 ### Read Multiple Rows
 
 */
+
 
 extension SQLiteDatabase {
     func contacts() -> [Contact] {
@@ -333,12 +332,8 @@ do {
     try db.insertContact(Contact(id: 2, name: "Mic"))
     try db.insertContact(Contact(id: 3, name: "Brian"))
     
-    db.contacts()
+    db.contacts().visualize()
     
 } catch {
     print(db.errorMessage)
 }
-
-
-
-
