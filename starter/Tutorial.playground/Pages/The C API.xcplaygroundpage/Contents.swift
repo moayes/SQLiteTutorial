@@ -16,49 +16,30 @@ Secondly, this Playground will need to write SQLite database files to your file 
 
 `mkdir -p ~/Documents/Shared\ Playground\ Data/SQLiteTutorial`
 
-### Creating and Opening a Database
-
-Before doing anything with the SQLite API you need to open a database connection. 
-
 */
 
+//: ## Open a Connection
+ 
 
-/*:
-
-### Create a Table
-
-Create a Contact table with a very basic schema. The table will consist of two columns. The first is `Id` as an `INT` and `PRIMARY KEY`. The second is `Name` as `CHAR(255)`.
-*/
+//: ## Create a Table
 
 
-/*:
-
-### Insert Row
-
-Now that you have a table created, it's time to insert a row. Add a contact with the an `Id` of `1` and `Name` of `'Ray'`.
-
-*/
+//: ## Insert a Contact
 
 
-/*: 
-
-### Querying
-
-You now have a table and a row within that table. So, prove it! 
-
-*/
+//: ## Querying
 
 
-//: ### Update
+//: ## Update
 
 
-//: ### Delete
+//: ## Delete
 
 
-//: ### Errors
+//: ## Errors
 
 
-//: ### Close the database connection
+//: ## Close the database connection
 
 
 //: Continue to [Making It Swift](@next)
